@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TextPost</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --ink: #1c1f26; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2f6df6; --accent-ink: #ffffff; --danger: #d63d3d; --like: #e0245e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1115; --card: #181b22; --ink: #eceef3; --muted: #9aa1ae; --line: #2a2e38; --accent: #5b8cff; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #app { max-width: 560px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+  main { flex: 1; overflow-y: auto; padding: 12px 14px 20px; }
+  h1 { font-size: 22px; margin: 4px 0 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, textarea { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--ink); font: inherit; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  textarea { resize: vertical; min-height: 160px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 11px 16px;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  button.full { width: 100%; margin-top: 16px; }
+  button.ghost { background: transparent; color: var(--accent); padding: 6px 8px; font-weight: 600; }
+  button.plain { background: transparent; color: var(--muted); padding: 6px 8px; font-weight: 500; }
+  button:disabled { opacity: .55; cursor: default; }
+  .msg { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+  .msg.error { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+  .center { text-align: center; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .auth { padding-top: 6vh; }
+  .brand { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+
+  .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--line); flex: none; }
+  .avatar.big { width: 84px; height: 84px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+  .post .who { font-weight: 700; cursor: pointer; }
+  .post .time { color: var(--muted); font-size: 12px; }
+  .post .body { margin: 10px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+  .actions { display: flex; gap: 6px; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 4px; }
+  .actions button { background: transparent; color: var(--muted); padding: 6px 10px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .actions button.liked { color: var(--like); }
+  .actions svg { width: 20px; height: 20px; }
+  .comments { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .comment { display: flex; gap: 8px; margin-bottom: 10px; }
+  .comment .avatar { width: 28px; height: 28px; }
+  .comment .c-body { background: var(--bg); border-radius: 12px; padding: 7px 10px; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .comment .c-name { font-weight: 700; font-size: 13px; }
+  .add-comment { display: flex; gap: 8px; }
+  .add-comment input { flex: 1; }
+
+  .chat-item { display: flex; gap: 12px; align-items: center; padding: 12px; cursor: pointer; }
+  .chat-item .last { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-head { display: flex; align-items: center; gap: 10px; padding: 8px 4px 12px; }
+  #thread { display: flex; flex-direction: column; gap: 6px; padding-bottom: 8px; }
+  .bubble { max-width: 78%; padding: 8px 12px; border-radius: 16px; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--card); border: 1px solid var(--line); align-self: flex-start; }
+  .bubble.mine { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .composer { display: flex; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--bg); }
+  .composer input { flex: 1; }
+
+  nav { display: flex; border-top: 1px solid var(--line); background: var(--card); padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; background: transparent; color: var(--muted); border-radius: 0; padding: 10px 0 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 12px; font-weight: 600; }
+  nav button.active { color: var(--accent); }
+  nav svg { width: 24px; height: 24px; }
+  .profile-top { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .kv:last-child { border-bottom: 0; }
+  .kv span:first-child { color: var(--muted); }
+  .kv span:last-child { overflow-wrap: anywhere; text-align: right; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .dialog { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; padding: 20px; width: 100%; max-width: 340px; }
+  .dialog h2 { margin: 0 0 6px; font-size: 18px; }
+  .dialog p { margin: 0 0 18px; color: var(--muted); }
+  .dialog .btns { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel { background: var(--bg); color: var(--ink); border: 1px solid var(--line); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 90px; background: var(--ink); color: var(--bg);
+    padding: 10px 16px; border-radius: 12px; z-index: 60; max-width: 90%; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const app = document.getElementById('app');
+let me = null;
+let tab = 'home';
+let pollTimer = null;
+let activeChat = null;   // { uid, load } while a chat is open
+let socket = null;
+
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  chats: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z"/></svg>',
+  post: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg>',
+  profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>',
+  heart: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>',
+  heartOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>',
+  comment: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z"/></svg>'
+};
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null) e.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return e;
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, { credentials: 'same-origin', ...opts });
+  let data = {};
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) { const er = new Error(data.error || 'Something went wrong.'); er.status = res.status; er.code = data.code; throw er; }
+  return data;
+}
+const jpost = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+function ago(s) {
+  const d = new Date(s.replace(' ', 'T') + 'Z');
+  const sec = Math.floor((Date.now() - d) / 1000);
+  if (sec < 60) return 'just now';
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+  return d.toLocaleDateString();
+}
+
+function stopPolling() { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } activeChat = null; }
+
+/* ---------------- in-app popup + toast (no browser dialogs) ---------------- */
+function confirmDialog(title, text, okLabel = 'Delete') {
+  return new Promise(resolve => {
+    const done = v => { overlay.remove(); document.removeEventListener('keydown', onKey); resolve(v); };
+    const onKey = e => { if (e.key === 'Escape') done(false); };
+    const cancel = el('button', { class: 'btn-cancel', onclick: () => done(false) }, 'Cancel');
+    const ok = el('button', { class: 'btn-danger', onclick: () => done(true) }, okLabel);
+    const overlay = el('div', { class: 'overlay', onclick: e => { if (e.target === overlay) done(false); } },
+      el('div', { class: 'dialog', role: 'dialog', 'aria-modal': 'true' },
+        el('h2', {}, title), el('p', {}, text), el('div', { class: 'btns' }, cancel, ok)));
+    document.addEventListener('keydown', onKey);
+    document.body.append(overlay);
+    cancel.focus();
+  });
+}
+
+let toastTimer = null;
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = el('div', { class: 'toast' }, msg);
+  document.body.append(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.remove(), 3000);
+}
+
+/* ---------------- instant messages (WebSocket) ---------------- */
+function connectSocket() {
+  if (socket || typeof io === 'undefined') return;
+  socket = io({ transports: ['websocket', 'polling'] });
+  socket.on('message', m => {
+    if (activeChat && (m.from === activeChat.uid || m.to === activeChat.uid)) activeChat.load(true);
+    else if (tab === 'chats' && !activeChat) renderChats();
+  });
+  // after a reconnect (e.g. the server woke up), catch up on anything missed
+  socket.on('connect', () => { if (activeChat) activeChat.load(true); });
+}
+function disconnectSocket() { if (socket) { socket.disconnect(); socket = null; } }
+
+/* ---------------- auth screens ---------------- */
+function showLogin(prefillEmail = '') {
+  stopPolling();
+  const msg = el('div');
+  const email = el('input', { type: 'email', placeholder: 'you@example.com', autocomplete: 'email', value: prefillEmail });
+  const pw = el('input', { type: 'password', placeholder: 'Password', autocomplete: 'current-password' });
+  const btn = el('button', { class: 'full' }, 'Log in');
+
+  async function submit() {
+    msg.replaceChildren();
+    btn.disabled = true;
+    try {
+      await jpost('/login', { email: email.value, password: pw.value });
+      await boot();
+    } catch (e) {
+      if (e.code === 'not_registered') {
+        msg.replaceChildren(el('div', { class: 'msg error' },
+          'This email is not registered. ',
+          el('a', { href: '#', style: 'color:inherit;font-weight:700', onclick: ev => { ev.preventDefault(); showRegister(email.value); } }, 'Register now')));
+      } else {
+        msg.replaceChildren(el('div', { class: 'msg error' }, e.message));
+      }
+    } finally { btn.disabled = false; }
+  }
+  btn.addEventListener('click', submit);
+  pw.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+
+  app.replaceChildren(el('main', { class: 'auth' },
+    el('div', { class: 'center' }, el('div', { class: 'brand' }, 'TextPost'), el('div', { class: 'muted' }, 'Log in to continue')),
+    el('div', { class: 'card', style: 'margin-top:20px' },
+      el('label', {}, 'Email'), email, el('label', {}, 'Password'), pw, btn, msg),
+    el('div', { class: 'center muted' }, 'New here? ',
+      el('a', { href: '#', style: 'color:var(--accent);font-weight:700', onclick: e => { e.preventDefault(); showRegister(); } }, 'Create an account'))
+  ));
+}
+
+function showRegister(prefillEmail = '') {
+  stopPolling();
+  const msg = el('div');
+  const username = el('input', { type: 'text', placeholder: 'Username', autocomplete: 'username' });
+  const photo = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/gif,image/webp' });
+  const preview = el('img', { class: 'avatar big', style: 'display:none;margin-top:8px' });
+  photo.addEventListener('change', () => {
+    const f = photo.files[0];
+    if (f) { preview.src = URL.createObjectURL(f); preview.style.display = 'block'; }
+  });
+  const email = el('input', { type: 'email', placeholder: 'you@example.com', autocomplete: 'email', value: prefillEmail });
+  const pw = el('input', { type: 'password', placeholder: 'Password', autocomplete: 'new-password' });
+  const confirm = el('input', { type: 'password', placeholder: 'Confirm password', autocomplete: 'new-password' });
+  const dob = el('input', { type: 'date' });
+  // only allow dates that make the user at least 18
+  const max = new Date(); max.setFullYear(max.getFullYear() - 18);
+  dob.max = max.toISOString().slice(0, 10);
+  const btn = el('button', { class: 'full' }, 'Register');
+
+  async function submit() {
+    msg.replaceChildren();
+    if (pw.value !== confirm.value) { msg.replaceChildren(el('div', { class: 'msg error' }, 'Passwords do not match.')); return; }
+    if (dob.value && dob.value > dob.max) { msg.replaceChildren(el('div', { class: 'msg error' }, 'You must be 18 or older to register.')); return; }
+    const fd = new FormData();
+    fd.append('username', username.value);
+    fd.append('email', email.value);
+    fd.append('password', pw.value);
+    fd.append('confirm', confirm.value);
+    fd.append('dob', dob.value);
+    if (photo.files[0]) fd.append('photo', photo.files[0]);
+    btn.disabled = true;
+    try {
+      await api('/register', { method: 'POST', body: fd });
+      await boot();
+    } catch (e) {
+      msg.replaceChildren(el('div', { class: 'msg error' }, e.message));
+    } finally { btn.disabled = false; }
+  }
+  btn.addEventListener('click', submit);
+
+  app.replaceChildren(el('main', { class: 'auth', style: 'padding-top:2vh' },
+    el('div', { class: 'center' }, el('div', { class: 'brand' }, 'Create account')),
+    el('div', { class: 'card', style: 'margin-top:14px' },
+      el('label', {}, 'Username'), username,
+      el('label', {}, 'Profile photo'), photo, preview,
+      el('label', {}, 'Email'), email,
+      el('label', {}, 'Password'), pw,
+      el('label', {}, 'Confirm password'), confirm,
+      el('label', {}, 'Date of birth (18+ only)'), dob,
+      el('div', { class: 'muted', style: 'margin-top:10px' }, 'There is no password reset. If you forget your password, you cannot get back in.'),
+      btn, msg),
+    el('div', { class: 'center muted' }, 'Already registered? ',
+      el('a', { href: '#', style: 'color:var(--accent);font-weight:700', onclick: e => { e.preventDefault(); showLogin(); } }, 'Log in'))
+  ));
+}
+
+/* ---------------- shell with bottom nav ---------------- */
+function shell(content, opts = {}) {
+  const items = [['home', 'Home'], ['chats', 'Chats'], ['post', 'Post'], ['profile', 'Profile']];
+  const nav = el('nav', {}, items.map(([k, label]) =>
+    el('button', { class: tab === k ? 'active' : '', onclick: () => go(k) }, el('span', { html: ICONS[k] }), label)));
+  const children = [el('main', {}, content)];
+  if (opts.footer) children.push(opts.footer);
+  children.push(nav);
+  app.replaceChildren(...children);
+}
+
+function go(k) { tab = k; stopPolling(); ({ home: renderHome, chats: renderChats, post: renderPost, profile: renderProfile })[k](); }
+
+/* ---------------- post card ---------------- */
+function postCard(p, { showAuthorChat = true, allowDelete = false } = {}) {
+  const likeCount = el('span', {}, String(p.likes));
+  const likeBtn = el('button', { class: p.liked ? 'liked' : '' });
+  const heart = el('span', { html: p.liked ? ICONS.heart : ICONS.heartOutline });
+  likeBtn.append(heart, likeCount);
+  likeBtn.addEventListener('click', async () => {
+    try {
+      const r = await api('/posts/' + p.id + '/like', { method: 'POST' });
+      p.liked = r.liked; p.likes = r.likes;
+      likeCount.textContent = r.likes;
+      likeBtn.classList.toggle('liked', r.liked);
+      heart.innerHTML = r.liked ? ICONS.heart : ICONS.heartOutline;
+    } catch (e) { toast(e.message); }
+  });
+
+  const cCount = el('span', {}, String(p.comments));
+  const cBtn = el('button', {}, el('span', { html: ICONS.comment }), cCount);
+  const cBox = el('div', { class: 'comments', style: 'display:none' });
+  let loaded = false;
+
+  async function loadComments() {
+    const list = await api('/posts/' + p.id + '/comments');
+    cList.replaceChildren(...list.map(c => el('div', { class: 'comment' },
+      el('img', { class: 'avatar', src: c.author.photo, alt: '' }),
+      el('div', { class: 'c-body' }, el('div', { class: 'c-name' }, c.author.username), c.body))));
+    if (!list.length) cList.replaceChildren(el('div', { class: 'muted', style: 'margin-bottom:8px' }, 'No comments yet.'));
+  }
+  const cList = el('div');
+  const cInput = el('input', { type: 'text', placeholder: 'Write a comment…' });
+  const cSend = el('button', {}, 'Send');
+  async function sendComment() {
+    if (!cInput.value.trim()) return;
+    cSend.disabled = true;
+    try {
+      const r = await jpost('/posts/' + p.id + '/comments', { body: cInput.value });
+      cInput.value = ''; p.comments = r.comments; cCount.textContent = r.comments;
+      await loadComments();
+    } catch (e) { toast(e.message); } finally { cSend.disabled = false; }
+  }
+  cSend.addEventListener('click', sendComment);
+  cInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendComment(); });
+  cBox.append(cList, el('div', { class: 'add-comment' }, cInput, cSend));
+
+  cBtn.addEventListener('click', async () => {
+    const open = cBox.style.display === 'none';
+    cBox.style.display = open ? 'block' : 'none';
+    if (open && !loaded) { loaded = true; try { await loadComments(); } catch (e) { toast(e.message); } }
+  });
+
+  const canChat = showAuthorChat && p.author.id !== me.id;
+  const who = el('div', { class: 'who', onclick: canChat ? () => openChat(p.author.id) : null }, p.author.username);
+  const card = el('div', { class: 'card post' });
+  const head = el('div', { class: 'row' },
+    el('img', { class: 'avatar', src: p.author.photo, alt: '' }),
+    el('div', { class: 'grow' }, who, el('div', { class: 'time' }, ago(p.created))));
+  if (allowDelete && p.author.id === me.id) {
+    head.append(el('button', { class: 'plain', style: 'color:var(--danger)', onclick: async () => {
+      if (!await confirmDialog('Delete this post?', 'This will also remove its likes and comments. This cannot be undone.')) return;
+      try { await api('/posts/' + p.id, { method: 'DELETE' }); card.remove(); }
+      catch (e) { toast(e.message); }
+    } }, 'Delete'));
+  }
+  card.append(head,
+    el('div', { class: 'body' }, p.body),
+    el('div', { class: 'actions' }, likeBtn, cBtn),
+    cBox);
+  return card;
+}
+
+/* ---------------- home ---------------- */
+async function renderHome() {
+  const wrap = el('div');
+  shell(wrap);
+  const bar = el('div', { class: 'toolbar' }, el('h1', {}, 'Home'), el('button', { class: 'ghost', onclick: () => renderHome() }, 'Shuffle'));
+  wrap.append(bar);
+  try {
+    const posts = await api('/posts/random');
+    if (!posts.length) wrap.append(el('div', { class: 'empty' }, 'No posts yet. Be the first to post!'));
+    posts.forEach(p => wrap.append(postCard(p)));
+  } catch (e) { wrap.append(el('div', { class: 'msg error' }, e.message)); }
+}
+
+/* ---------------- chats ---------------- */
+async function renderChats() {
+  const wrap = el('div');
+  shell(wrap);
+  wrap.append(el('h1', {}, 'Chats'));
+  try {
+    const list = await api('/chats');
+    if (!list.length) {
+      wrap.append(el('div', { class: 'empty' }, 'No chats yet. Tap a username on a post to start chatting.'));
+      return;
+    }
+    list.forEach(c => wrap.append(el('div', { class: 'card chat-item', onclick: () => openChat(c.user.id) },
+      el('img', { class: 'avatar', src: c.user.photo, alt: '' }),
+      el('div', { class: 'grow' }, el('div', { style: 'font-weight:700' }, c.user.username), el('div', { class: 'last' }, c.last)),
+      el('div', { class: 'time muted', style: 'font-size:12px' }, ago(c.created)))));
+  } catch (e) { wrap.append(el('div', { class: 'msg error' }, e.message)); }
+}
+
+async function openChat(uid) {
+  tab = 'chats'; stopPolling();
+  const thread = el('div', { id: 'thread' });
+  const head = el('div', { class: 'chat-head' });
+  const input = el('input', { type: 'text', placeholder: 'Message…' });
+  const send = el('button', {}, 'Send');
+  const composer = el('div', { class: 'composer' }, input, send);
+  shell(el('div', {}, head, thread), { footer: composer });
+  const mainEl = app.querySelector('main');
+
+  let lastCount = -1;
+  async function load(scroll) {
+    try {
+      const r = await api('/chats/' + uid);
+      if (!head.firstChild) {
+        head.append(el('button', { class: 'plain', onclick: () => go('chats') }, '← Back'),
+          el('img', { class: 'avatar', src: r.user.photo, alt: '' }),
+          el('div', { style: 'font-weight:700' }, r.user.username));
+      }
+      if (r.messages.length !== lastCount) {
+        lastCount = r.messages.length;
+        thread.replaceChildren(...r.messages.map(m => el('div', { class: 'bubble' + (m.mine ? ' mine' : '') }, m.body)));
+        if (scroll) mainEl.scrollTop = mainEl.scrollHeight;
+      }
+    } catch (e) { /* keep the chat open; the next update will retry */ }
+  }
+  async function sendMsg() {
+    if (!input.value.trim()) return;
+    send.disabled = true;
+    try { await jpost('/chats/' + uid, { body: input.value }); input.value = ''; await load(true); }
+    catch (e) { toast(e.message); } finally { send.disabled = false; input.focus(); }
+  }
+  send.addEventListener('click', sendMsg);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(); });
+  await load(true);
+  activeChat = { uid, load };
+  // safety net: only polls while the live connection is down
+  pollTimer = setInterval(() => { if (!socket || !socket.connected) load(false); }, 3000);
+}
+
+/* ---------------- post ---------------- */
+function renderPost() {
+  const ta = el('textarea', { placeholder: "What's on your mind? Write as much as you like." });
+  const btn = el('button', { class: 'full' }, 'Post');
+  const msg = el('div');
+  btn.addEventListener('click', async () => {
+    msg.replaceChildren();
+    btn.disabled = true;
+    try { await jpost('/posts', { body: ta.value }); ta.value = ''; go('profile'); }
+    catch (e) { msg.replaceChildren(el('div', { class: 'msg error' }, e.message)); }
+    finally { btn.disabled = false; }
+  });
+  shell(el('div', {}, el('h1', {}, 'New post'), el('div', { class: 'card' }, ta, btn, msg)));
+}
+
+/* ---------------- profile ---------------- */
+async function renderProfile() {
+  const wrap = el('div');
+  shell(wrap);
+  wrap.append(
+    el('div', { class: 'card' },
+      el('div', { class: 'profile-top' },
+        el('img', { class: 'avatar big', src: me.photo, alt: '' }),
+        el('div', { style: 'font-size:20px;font-weight:800' }, me.username)),
+      el('div', { class: 'kv' }, el('span', {}, 'Name'), el('span', {}, me.username)),
+      el('div', { class: 'kv' }, el('span', {}, 'Email'), el('span', {}, me.email)),
+      el('div', { class: 'kv' }, el('span', {}, 'Password'), el('span', {}, '••••••••')),
+      el('div', { class: 'center', style: 'margin-top:8px' },
+        el('button', { class: 'plain', onclick: async () => { await api('/logout', { method: 'POST' }); disconnectSocket(); me = null; showLogin(); } }, 'Log out'))),
+    el('h1', { style: 'margin-top:18px' }, 'My posts'));
+  try {
+    const posts = await api('/posts/mine');
+    if (!posts.length) wrap.append(el('div', { class: 'empty' }, "You haven't posted anything yet."));
+    posts.forEach(p => wrap.append(postCard(p, { showAuthorChat: false, allowDelete: true })));
+  } catch (e) { wrap.append(el('div', { class: 'msg error' }, e.message)); }
+}
+
+/* ---------------- boot ---------------- */
+async function boot() {
+  try { me = await api('/me'); tab = 'home'; connectSocket(); renderHome(); }
+  catch (e) { me = null; showLogin(); }
+}
+boot();
+</script>
+</body>
+</html>
